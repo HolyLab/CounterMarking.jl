@@ -1,3 +1,6 @@
 [deps]
 CounterMarking = "454fbcff-fa78-4492-9c80-2cfc3f2a4b52"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[compat]
+Documenter = "1"
