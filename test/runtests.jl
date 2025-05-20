@@ -1,6 +1,29 @@
 using CounterMarking
+using FileIO
 using Test
 
 @testset "CounterMarking.jl" begin
-    # Write your tests here.
+    testdir = "testimages"
+    img = load(joinpath(testdir, "Picture.png"))
+    seg = segment_image(img)
+    # Without ImageView loaded, we can't visualize it, but we get a helpful error
+    if !isdefined(@__MODULE__, :ImageView)
+        @test_throws "using ImageView" randshow(seg)
+        @test_throws "using ImageView" meanshow(seg)
+    end
+    @eval using ImageView
+    dct = meanshow(seg)
+    @test haskey(dct, "gui")
+
+    spotdict, stimulus = spots(seg)
+    _, stimspot = stimulus
+    @test stimspot.npixels > 1000
+    @test stimspot.centroid[1] < size(img, 1) ÷ 2
+    @test stimspot.centroid[2] > size(img, 2) ÷ 2
+
+    stdspotdict, stdstimulus = upperleft(spotdict, stimulus, size(img))
+    _, stimspot = stdstimulus
+    @test stimspot.npixels > 1000
+    @test stimspot.centroid[1] < size(img, 1) ÷ 2
+    @test stimspot.centroid[2] < size(img, 2) ÷ 2
 end
