@@ -14,6 +14,13 @@ using Test
     @eval using ImageView
     dct = meanshow(seg)
     @test haskey(dct, "gui")
+    dct = randshow(seg)
+    @test haskey(dct, "gui")
+    dct = randshow(img, seg)
+    @test haskey(dct, "window")
+    dct = meanshow(img, seg)
+    @test haskey(dct, "window")
+    ImageView.closeall()
 
     spotdict, stimulus = spots(seg)
     _, stimspot = stimulus
