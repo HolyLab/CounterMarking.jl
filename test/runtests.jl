@@ -3,7 +3,7 @@ using FileIO
 using Test
 
 @testset "CounterMarking.jl" begin
-    testdir = "testimages"
+    testdir = joinpath(@__DIR__, "..", "docs", "src", "assets")
     img = load(joinpath(testdir, "Picture.png"))
     seg = segment_image(img)
     # Without ImageView loaded, we can't visualize it, but we get a helpful error

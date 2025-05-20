@@ -1,17 +1,22 @@
 """
     randshow(seg; kwargs...)
+    randshow(img, seg; kwargs...)
 
-Display a segmented image using random colors for each segment.
+Display a segmented image using random colors for each segment. The version with
+`img` displays the original image and the segmented image one atop the other,
+and zooming on one will zoom on the other.
 
-!!! note
-    You must load the `ImageView` package to use this function.
+!!! note You must load the `ImageView` package to use this function.
 """
 function randshow end
 
 """
     meanshow(seg; kwargs...)
+    meanshow(img, seg; kwargs...)
 
-Display a segmented image using the mean color of each segment.
+Display a segmented image using the mean color of each segment. The version with
+`img` displays the original image and the segmented image one atop the other,
+and zooming on one will zoom on the other.
 
 !!! note
     You must load the `ImageView` package to use this function.
