@@ -5,6 +5,7 @@ version = "1.0.0"
 
 [deps]
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
 ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
 ImageMorphology = "787d08f9-d448-5407-9aad-5290dd7ab264"
@@ -20,6 +21,7 @@ CounterMarkingImageViewExt = "ImageView"
 
 [compat]
 FileIO = "1"
+Glob = "1"
 ImageCore = "0.10"
 ImageIO = "0.6"
 ImageMorphology = "0.4"

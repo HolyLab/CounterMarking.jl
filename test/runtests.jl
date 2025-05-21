@@ -1,5 +1,6 @@
 using CounterMarking
 using FileIO
+using XLSX
 using Test
 
 @testset "CounterMarking.jl" begin
@@ -38,4 +39,9 @@ using Test
     tmpfile = tempname() * ".xlsx"
     writexlsx(tmpfile, seg)
     @test isfile(tmpfile)
+
+    # Test multi-file writing
+    process_images(tmpfile, glob"*.png"; dirname=testdir)
+    data = XLSX.readtable(tmpfile, "Picture")
+    @test isa(data, XLSX.DataTable)
 end

@@ -36,3 +36,39 @@ function writexlsx(filename::AbstractString, seg::SegmentedImage)
     spotdict, stimulus = spots(seg)
     writexlsx(filename, spotdict, stimulus, imgsize)
 end
+
+"""
+    process_images(outfile::AbstractString, glob::GlobMatch; dirname=pwd())
+    process_images(outfile::AbstractString, glob::AbstractString; dirname=pwd())
+
+Process all images with filenames matching `glob` and save the results to `outfile`.
+Each image will be a separate sheet in the Excel file.
+
+Optionally specify the `dirname` containing the images.
+
+# Examples
+
+To process a collection of images in a different directory, and save the results to
+that same directory:
+
+```julia
+julia> process_images("2025-03-15/results.xlsx", glob"*.png"; dirname="2025-03-15")
+```
+"""
+function process_images(outfile::AbstractString, glob::Glob.GlobMatch; dirname=pwd())
+    i = 0
+    XLSX.openxlsx(outfile; mode="w") do xf
+        for filename in readdir(glob, dirname)
+            img = load(filename)
+            seg = segment_image(img)
+            imgsize = size(labels_map(seg))
+            spotdict, stimulus = spots(seg)
+            sheetname = splitext(basename(filename))[1]
+            sheet = xf[i+=1]
+            XLSX.rename!(sheet, sheetname)
+            makesheet!(sheet, spotdict, stimulus, imgsize)
+        end
+    end
+end
+process_images(outfile::AbstractString, glob::AbstractString; kwargs...) =
+    process_images(outfile, Glob.GlobMatch(glob); kwargs...)

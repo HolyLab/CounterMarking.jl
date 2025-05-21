@@ -162,7 +162,7 @@ julia> writexlsx(raw"C:\Users\me\somefolder\mydata.xlsx", seg)
 If you have many images in one folder, you can process them all using a single command:
 
 ```
-julia> process_images("2025-03-15/*.png")
+julia> process_images("2025-03-15/results.xlsx", "2025-03-15/*.png")
 ```
 
 ### Step 8: create a "density map" of marks across multiple images
