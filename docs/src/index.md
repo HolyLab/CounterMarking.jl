@@ -48,7 +48,7 @@ MyCounterMarkingFolder$ julia
 julia> ]    # this enters pkg mode
 pkg> activate .
 
-pkg> add CounterMarking ImageView XLSX Glob FileIO ImageIO
+pkg> add CounterMarking ImageView Glob FileIO ImageIO
 ```
 
 This should create the `Project.toml` file in `MyCounterMarkingFolder`. If this succeeds, you shouldn't have to do this again.
@@ -144,6 +144,18 @@ If you Ctrl-click and drag on the image, you'll zoom in on both images. This can
 
 The columns marked "raw" correspond to pixel locations in the original image; the columns marked "UL" come from flipping the image to place the stimulus spot in the Upper Left of the image.
 This way of "standardizing" the location makes certain analyses easier.
+
+```
+julia> writexlsx("mydata.xlsx", seg)
+```
+
+Optionally specify a full directory path, e.g.,
+
+```
+julia> writexlsx(raw"C:\Users\me\somefolder\mydata.xlsx", seg)
+```
+
+(You don't need `raw` on Linux or Mac, but it is helpful on Windows.)
 
 ### Step 7: process a whole directory of images at once
 

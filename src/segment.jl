@@ -110,10 +110,10 @@ function spots(
 end
 
 """
-    spotdict, stimulus = upperleft(spotdict::AbstractDict{Int, Spot}, stimulus, imgsize)
+    spotdict_ul, stimulus_ul = upperleft(spotdict::AbstractDict{Int, Spot}, stimulus, imgsize)
 
 Given a `spotdict` of `Spot` objects and a `stimulus` segment, return a new
-`spotdict` where the centroids of the spots are flipped so that the stimlus spot
+`spotdict_ul` corresponding to an image flipped so that `stimulus_ul`
 is in the upper left corner.
 """
 function upperleft(spotdict::AbstractDict{Int, Spot}, stimulus, imgsize)

@@ -10,6 +10,7 @@ ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
 ImageMorphology = "787d08f9-d448-5407-9aad-5290dd7ab264"
 ImageSegmentation = "80713f31-8817-5129-9cf8-209ff8fb23e1"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [weakdeps]
 ImageView = "86fae568-95e7-573e-a6b2-d8a6b900c9ef"
@@ -24,6 +25,7 @@ ImageIO = "0.6"
 ImageMorphology = "0.4"
 ImageSegmentation = "1.9"
 ImageView = "0.12"
+XLSX = "0.10"
 julia = "1.10"
 
 [extras]

@@ -33,4 +33,9 @@ using Test
     @test stimspot.npixels > 1000
     @test stimspot.centroid[1] < size(img, 1) ÷ 2
     @test stimspot.centroid[2] < size(img, 2) ÷ 2
+
+    # Test the xlsx writing
+    tmpfile = tempname() * ".xlsx"
+    writexlsx(tmpfile, seg)
+    @test isfile(tmpfile)
 end
