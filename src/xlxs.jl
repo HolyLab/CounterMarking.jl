@@ -64,8 +64,13 @@ function process_images(outfile::AbstractString, glob::Glob.GlobMatch; dirname=p
             imgsize = size(labels_map(seg))
             spotdict, stimulus = spots(seg)
             sheetname = splitext(basename(filename))[1]
-            sheet = xf[i+=1]
-            XLSX.rename!(sheet, sheetname)
+            sheet = if i == 0
+                i += 1
+                XLSX.rename!(xf[1], sheetname)
+                xf[1]
+            else
+                XLSX.addsheet!(xf, sheetname)
+            end
             makesheet!(sheet, spotdict, stimulus, imgsize)
         end
     end

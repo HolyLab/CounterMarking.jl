@@ -1,5 +1,136 @@
 
+function gui(outbase, files; colors=distinguishable_colors(15, [RGB(1, 1, 1)]; dropseed=true))
+    channelpct(x) = string(round(Int, x * 100)) * '%'
 
+    outbase, _ = splitext(outbase)
+
+    winsize = round.(Int, 0.8 .* screen_size())
+    win = GtkWindow("CounterMarking", winsize...)
+    ag = Gtk4.GLib.GSimpleActionGroup()
+    m = Gtk4.GLib.GActionMap(ag)
+    push!(win, Gtk4.GLib.GActionGroup(ag), "win")
+    Gtk4.GLib.add_action(m, "close", ImageView.close_cb, win)
+    Gtk4.GLib.add_action(m, "closeall", ImageView.closeall_cb, nothing)
+    Gtk4.GLib.add_stateful_action(m, "fullscreen", false, ImageView.fullscreen_cb, win)
+    sc = GtkShortcutController(win)
+    Gtk4.add_action_shortcut(sc,Sys.isapple() ? "<Meta>W" : "<Control>W", "win.close")
+    Gtk4.add_action_shortcut(sc,Sys.isapple() ? "<Meta><Shift>W" : "<Control><Shift>W", "win.closeall")
+    Gtk4.add_action_shortcut(sc,Sys.isapple() ? "<Meta><Shift>F" : "F11", "win.fullscreen")
+
+    # CSS styling for the colors
+    io = IOBuffer()
+    for (i, color) in enumerate(colors)
+        colorstr = "rgb(" * channelpct(color.r) * ", " *
+                            channelpct(color.g) * ", " *
+                            channelpct(color.b) * ")"
+        println(io, """
+        .color$i {
+            background: $colorstr;
+        }
+        """)
+    end
+    css = String(take!(io))
+    cssprov = GtkCssProvider(css)
+    push!(Gtk4.display(win), cssprov)
+
+    win[] = bx = GtkBox(:v)
+    ImageView.window_wrefs[win] = nothing
+    signal_connect(win, :destroy) do w
+        delete!(ImageView.window_wrefs, win)
+    end
+    g, frames, canvases = ImageView.canvasgrid((2, 1), :auto)
+    push!(bx, g)
+    push!(bx, GtkSeparator(:h))
+    guibx = GtkBox(:h)
+    push!(bx, guibx)
+    seggrid = GtkGrid()
+    push!(guibx, seggrid)
+    # Add checkboxes for each color, with the box's color set to the color
+    cbs = []
+    for i in 1:length(colors)
+        cb = checkbox(false)
+        add_css_class(cb.widget, "color$i")
+        for prop in ("margin_start", "margin_end", "margin_top", "margin_bottom")
+            set_gtk_property!(cb.widget, prop, 5)
+        end
+        set_gtk_property!(cb.widget, "width-request", 20)
+        row = div(i - 1, 5) + 1
+        col = mod(i - 1, 5) + 1
+        seggrid[col, row] = cb.widget
+        push!(cbs, cb)
+    end
+    # Add "Done & Next" and "Skip" buttons
+    btnclick = Condition()
+    whichbutton = Ref{Symbol}()
+    donebtn = button("Done & Next")
+    skipbtn = button("Skip")
+    push!(guibx, donebtn)
+    push!(guibx, skipbtn)
+    on(donebtn) do _
+        whichbutton[] = :done
+        notify(btnclick)
+    end
+    on(skipbtn) do _
+        whichbutton[] = :skip
+        notify(btnclick)
+    end
+
+    results = []
+    for (i, file) in enumerate(files)
+        img = color.(load(file))
+        seg = segment_image(img)
+        nsegs = length(segment_labels(seg))
+        @assert nsegs < length(colors) "Too many segments for colors"
+        istim = stimulus_index(seg)
+        for (j, cb) in enumerate(cbs)
+            # set_gtk_property!(cb, "active", j <= nsegs)
+            cb[] = j == istim
+        end
+        imshow(canvases[1, 1], img)
+        imshow(canvases[2, 1], map(i->colors[i], labels_map(seg)))
+
+        wait(btnclick)
+        whichbutton[] == :skip && continue
+
+        keep = Int[]
+        for (j, cb) in enumerate(cbs)
+            if cb[]
+                push!(keep, j)
+            end
+        end
+        pixelskeep = map(i -> i ∈ keep, labels_map(seg))
+        L = label_components(pixelskeep)
+        newseg = SegmentedImage(img, L)
+        spotdict, stimulus = spots(newseg)
+        push!(results, (file, spotdict, stimulus, newseg))
+    end
+
+    if !isempty(results)
+        xlsxname = outbase * ".xlsx"
+        XLSX.openxlsx(xlsxname; mode="w") do xf
+            for (i, (file, spotdict, stimulus, seg)) in enumerate(results)
+                imgsize = size(labels_map(seg))
+                sheetname = splitext(basename(file))[1]
+                sheet = if i == 1
+                    XLSX.rename!(xf[1], sheetname)
+                    xf[1]
+                else
+                    XLSX.addsheet!(xf, sheetname)
+                end
+                makesheet!(sheet, spotdict, stimulus, imgsize)
+            end
+        end
+        jldname = outbase * ".jld2"
+        jldopen(jldname, "w") do jf
+            for (file, spotdict, stimulus, seg) in results
+                imgname = splitext(basename(file))[1]
+                write(jf, imgname, (labels_map(seg), spotdict, stimulus))
+            end
+        end
+    end
+    destroy(win)
+end
+gui(outbase, glob::Glob.GlobMatch; kwargs...) = gui(outbase, Glob.glob(glob); kwargs...)
 
 function linkpair(img, imgc)
     zr, slicedata = roi(img)

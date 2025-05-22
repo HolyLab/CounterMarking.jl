@@ -6,7 +6,7 @@ using Glob
 using Test
 
 @testset "CounterMarking.jl" begin
-    testdir = joinpath(@__DIR__, "..", "docs", "src", "assets")
+    testdir = joinpath(pkgdir(CounterMarking), "docs", "src", "assets")
     img = load(joinpath(testdir, "Picture.png"))
     seg = segment_image(img)
     dct = meanshow(seg)

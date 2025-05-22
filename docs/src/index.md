@@ -68,7 +68,50 @@ and it will automatically "activate" this project and you'll have access to all 
     [Pkg documentation](https://pkgdocs.julialang.org/v1/getting-started/) for
     more information.
 
-## Processing your first image
+## Processing with the GUI
+
+From within `MyCounterMarkingFolder` created above, start Julia like this:
+
+```sh
+MyCounterMarkingFolder$ julia --project
+```
+
+Then load the packages:
+
+```
+julia> using CounterMarking, Glob
+```
+
+Then specify the images you want to process:
+
+```
+julia> gui("results_file_name", glob"Picture*.png")
+```
+
+This will save your results to `"results_file_name.xlsx"` and `"results_file_name.jld2"`.
+The syntax `glob"pattern"` means "all files that match this pattern", where `*` means "one or more characters".
+See [this tutorial](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns/) for more information about glob syntax.
+Alternatively, you can supply a list of files:
+
+```
+julia> gui("results_file_name", ["PictureA.png", "mouse7.png"])
+```
+
+However you launch it, you should see something like this:
+
+![GUI](assets/gui.png)
+
+On the top is the raw image. On the bottom is the segmented image; you should visually compare the two to check whether you're pleased with the quality of the segmentation.
+(If not, click "Skip" to omit that file from analysis.)
+
+If you like the segmentation, your tasks are:
+- click on all the checkboxes with colors that correspond to urine spots. You'll notice that the stimulus spot is pre-clicked (you can correct its choice if it didn't pick correctly). Most of the time there will be only one you need to check, but you can click more than one.
+  In this example image, all the urine spots are marked red, so you'd check the box that has the red border. Leave the stimulus spot checked, too.
+- click "Done & Next" to advance to the next image in the sequence
+
+After it finishes cycling through all the images, it will save your results and close the window.
+
+## Processing manually
 
 ### Step 1: start Julia with the right project
 
