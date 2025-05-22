@@ -1,18 +1,14 @@
 using CounterMarking
 using FileIO
 using XLSX
+using ImageView
+using Glob
 using Test
 
 @testset "CounterMarking.jl" begin
     testdir = joinpath(@__DIR__, "..", "docs", "src", "assets")
     img = load(joinpath(testdir, "Picture.png"))
     seg = segment_image(img)
-    # Without ImageView loaded, we can't visualize it, but we get a helpful error
-    if !isdefined(@__MODULE__, :ImageView)
-        @test_throws "using ImageView" randshow(seg)
-        @test_throws "using ImageView" meanshow(seg)
-    end
-    @eval using ImageView
     dct = meanshow(seg)
     @test haskey(dct, "gui")
     dct = randshow(seg)

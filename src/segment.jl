@@ -13,8 +13,6 @@ function segment_image(
         min_size::Int = 50,         # minimum size of segments to keep
     )
     seg = unseeded_region_growing(img, threshold)
-    L = label_components(labels_map(seg))   # insist on contiguous regions
-    seg = SegmentedImage(img, L)
     if prune
         println("Pruning segments smaller than $min_size pixels")
         seg = prune_segments(seg, label -> segment_pixel_count(seg, label) < min_size, (l1, l2) -> colordiff(segment_mean(seg, l1), segment_mean(seg, l2)))
@@ -36,6 +34,19 @@ function stimulus_index(seg::SegmentedImage, colorproj = RGB{Float32}(1, 1, -2))
     return i
 end
 
+function contiguous(seg::SegmentedImage, img::AbstractMatrix{<:Color}; min_size::Int = 50)
+    L = label_components(labels_map(seg))   # insist on contiguous regions
+    newseg = SegmentedImage(img, L)
+    newseg = prune_segments(newseg, label -> segment_pixel_count(newseg, label) < min_size, (l1, l2) -> colordiff(segment_mean(newseg, l1), segment_mean(newseg, l2)))
+    mapping = Dict(k => Set{Int}() for k in segment_labels(seg))
+    for (i, l) in pairs(seg.image_indexmap)
+        push!(mapping[l], newseg.image_indexmap[i])
+    end
+    return mapping
+end
+contiguous(seg::SegmentedImage, img::AbstractMatrix{<:Colorant}; kwargs...) =
+    contiguous(seg, color.(img); kwargs...)
+
 struct Spot
     npixels::Int
     centroid::Tuple{Int, Int}
@@ -54,7 +65,7 @@ stimulus segment and the second element is the `Spot` object for that segment.
 Spots larger than `max_size_frac * npixels` (default: 10% of the image) are ignored.
 """
 function spots(
-        seg;
+        seg::SegmentedImage;
         max_size_frac=0.1,            # no spot is bigger than max_size_frac * npixels
     )
     keypair(i, j) = i < j ? (i, j) : (j, i)
@@ -127,4 +138,13 @@ function upperleft(spotdict::AbstractDict{Int, Spot}, stimulus, imgsize)
         return Spot(spot.npixels, (c1 * x1 + (1 - c1) * (imsz1 - x1), c2 * x2 + (1 - c2) * (imsz2 - x2)))
     end
     return Dict(k => flip(v) for (k, v) in spotdict), sidx => flip(ss)
+end
+
+function colorize(seg::SegmentedImage, coloridx::AbstractDict, colors=distinguishable_colors(length(unique(values(coloridx)))))
+    label = seg.image_indexmap
+    img = similar(label, eltype(colors))
+    for idx in eachindex(label)
+        img[idx] = colors[coloridx[label[idx]]]
+    end
+    return img
 end
