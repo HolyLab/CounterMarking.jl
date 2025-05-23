@@ -148,3 +148,48 @@ end
 #     end
 #     return img
 # end
+
+"""
+    nmarked = density_map(jldfile::AbstractString)
+
+Given a JLD2 file `jldfile` written by `gui`, return an array `nmarked` counting
+of the number of images with a urine spot in each pixel. Before counting, the
+images are flipped so that the stimulus segment is in the upper left corner.
+"""
+function density_map(jldfile::AbstractString)
+    data = load(jldfile)
+    fns, imgsizes = String[], Tuple{Int, Int}[]
+    for (filename, (seg, _, _)) in data
+        push!(fns, filename)
+        imgsize = size(seg)
+        push!(imgsizes, imgsize)
+    end
+    szcount = Dict{Tuple{Int, Int}, Int}()
+    for sz in imgsizes
+        szcount[sz] = get(szcount, sz, 0) + 1
+    end
+    imgsize, n = argmax(last, szcount)
+    badfiles = fns[imgsizes .!= Ref(imgsize)]
+    if n != length(data)
+        if n == 1
+            error("no dominant image size found in $jldfile")
+        else
+            @warn("Image sizes do not all match, skipping $badfiles")
+        end
+    end
+
+    nmarked = zeros(Int, imgsize)
+    midpoint = imgsize .÷ 2
+    for (fn, (seg, _, stimulus)) in data
+        fn ∈ badfiles && continue
+        sidx, ss = stimulus
+        if ss.centroid[1] > midpoint[1]
+            seg = reverse(seg; dims=1)
+        end
+        if ss.centroid[2] > midpoint[2]
+            seg = reverse(seg; dims=2)
+        end
+        nmarked .+= seg .∉ Ref((0, sidx))
+    end
+    return nmarked
+end

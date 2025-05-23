@@ -15,8 +15,8 @@ Tips on image quality:
 
 - Put the stimulus near one of the four corners
 - Ensure lighting is fairly uniform
-- Try to ensure the entire image is of the filter paper, and that there aren't any black edges to the image (see lower left corner in the example above)
 - Make sure that any extraneous marks (e.g., the black writing in the image above) are of a very different color from scent marks.
+- Ensure that all your images are of the same size (i.e., same number of pixels horizontally and vertically), even if there are some extra pixels on the edges of the image
 
 ## Tutorial
 
@@ -68,7 +68,9 @@ and it will automatically "activate" this project and you'll have access to all 
     [Pkg documentation](https://pkgdocs.julialang.org/v1/getting-started/) for
     more information.
 
-## Processing with the GUI
+## Processing data with the GUI
+
+### Running the GUI
 
 From within `MyCounterMarkingFolder` created above, start Julia like this:
 
@@ -110,6 +112,23 @@ If you like the segmentation, your tasks are:
 - click "Done & Next" to advance to the next image in the sequence
 
 After it finishes cycling through all the images, it will save your results and close the window.
+
+### Summarizing the results: create a "density map" of marks across multiple images
+
+If you have many images collected under the same conditions (e.g., with
+different subject animals but the same stimuli), you can effectively overlay the
+entire collection of images. For this demo, it's assumed that `"results_file_name.jld2"` is one of the files output by the GUI.
+
+```
+julia> using CounterMarking, ImageView   # load packages (if this is a fresh session)
+
+julia> count = density_map("results_file_name.jld2");
+
+julia> dct = imshow(dmap);
+```
+
+!!! tip
+    `density_map` requires that most or all of your images are of the same size.
 
 ## Processing manually
 
@@ -206,14 +225,4 @@ If you have many images in one folder, you can process them all using a single c
 
 ```
 julia> process_images("2025-03-15/results.xlsx", "2025-03-15/*.png")
-```
-
-### Step 8: create a "density map" of marks across multiple images
-
-If you have many images collected under the same conditions (e.g., with different subject animals but the same stimuli), you can effectively overlay the entire collection of images:
-
-```
-julia> dmap = density_map("2025-03-15/maleU-*.png");
-
-julia> dct = imshow(dmap);
 ```

@@ -13,7 +13,7 @@ using ImageView
 using Random
 
 export segment_image, stimulus_index, spots, Spot, upperleft
-export writexlsx, process_images
+export writexlsx, process_images, density_map
 export randshow, meanshow, gui
 
 include("segment.jl")
