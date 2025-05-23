@@ -5,3 +5,4 @@
 [![Coverage](https://codecov.io/gh/HolyLab/CounterMarking.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/HolyLab/CounterMarking.jl)
 
 Utilities for analyzing images from mouse territorial countermarking experiments.
+See the [documentation](https://HolyLab.github.io/CounterMarking.jl/stable/) for more information.

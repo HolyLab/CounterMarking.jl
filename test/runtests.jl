@@ -45,11 +45,15 @@ using Test
     rm(tmpfile, force=true)
     btnclick = Condition()
     whichbutton = Ref{Symbol}()
-    @async gui(tmpfile, [joinpath(testdir, "Picture.png")]; btnclick, whichbutton)
+    @async gui(tmpfile, [joinpath(testdir, "Picture.png")]; btnclick, whichbutton, preclick=3)
     sleep(5)
     whichbutton[] = :done
     notify(btnclick)
     wait(btnclick)
     @test isfile(tmpfile)
     @test isfile(splitext(tmpfile)[1] * ".jld2")
+
+    # Test the density map
+    count = density_map(splitext(tmpfile)[1] * ".jld2")
+    @test extrema(count) == (0, 1)
 end
