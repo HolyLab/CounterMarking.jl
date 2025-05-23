@@ -14,7 +14,7 @@ function segment_image(
     )
     seg = unseeded_region_growing(img, threshold)
     if prune
-        println("Pruning segments smaller than $min_size pixels")
+        # println("Pruning segments smaller than $min_size pixels")
         seg = prune_segments(seg, label -> segment_pixel_count(seg, label) < min_size, (l1, l2) -> colordiff(segment_mean(seg, l1), segment_mean(seg, l2)))
     end
     return seg
@@ -34,18 +34,18 @@ function stimulus_index(seg::SegmentedImage, colorproj = RGB{Float32}(1, 1, -2))
     return i
 end
 
-function contiguous(seg::SegmentedImage, img::AbstractMatrix{<:Color}; min_size::Int = 50)
-    L = label_components(labels_map(seg))   # insist on contiguous regions
-    newseg = SegmentedImage(img, L)
-    newseg = prune_segments(newseg, label -> segment_pixel_count(newseg, label) < min_size, (l1, l2) -> colordiff(segment_mean(newseg, l1), segment_mean(newseg, l2)))
-    mapping = Dict(k => Set{Int}() for k in segment_labels(seg))
-    for (i, l) in pairs(seg.image_indexmap)
-        push!(mapping[l], newseg.image_indexmap[i])
-    end
-    return mapping
-end
-contiguous(seg::SegmentedImage, img::AbstractMatrix{<:Colorant}; kwargs...) =
-    contiguous(seg, color.(img); kwargs...)
+# function contiguous(seg::SegmentedImage, img::AbstractMatrix{<:Color}; min_size::Int = 50)
+#     L = label_components(labels_map(seg))   # insist on contiguous regions
+#     newseg = SegmentedImage(img, L)
+#     newseg = prune_segments(newseg, label -> segment_pixel_count(newseg, label) < min_size, (l1, l2) -> colordiff(segment_mean(newseg, l1), segment_mean(newseg, l2)))
+#     mapping = Dict(k => Set{Int}() for k in segment_labels(seg))
+#     for (i, l) in pairs(seg.image_indexmap)
+#         push!(mapping[l], newseg.image_indexmap[i])
+#     end
+#     return mapping
+# end
+# contiguous(seg::SegmentedImage, img::AbstractMatrix{<:Colorant}; kwargs...) =
+#     contiguous(seg, color.(img); kwargs...)
 
 struct Spot
     npixels::Int
@@ -75,7 +75,7 @@ function spots(
     label = seg.image_indexmap
     R = CartesianIndices(label)
     Ibegin, Iend = extrema(R)
-    I1 = one(Ibegin)
+    I1 = oneunit(Ibegin)
     centroidsacc = Dict{Int, Tuple{Int, Int, Int}}()   # accumulator for centroids
     nadj = Dict{Tuple{Int, Int}, Int}()             # number of times two segments are adjacent
     for idx in R
@@ -140,11 +140,11 @@ function upperleft(spotdict::AbstractDict{Int, Spot}, stimulus, imgsize)
     return Dict(k => flip(v) for (k, v) in spotdict), sidx => flip(ss)
 end
 
-function colorize(seg::SegmentedImage, coloridx::AbstractDict, colors=distinguishable_colors(length(unique(values(coloridx)))))
-    label = seg.image_indexmap
-    img = similar(label, eltype(colors))
-    for idx in eachindex(label)
-        img[idx] = colors[coloridx[label[idx]]]
-    end
-    return img
-end
+# function colorize(seg::SegmentedImage, coloridx::AbstractDict, colors=distinguishable_colors(length(unique(values(coloridx)))))
+#     label = seg.image_indexmap
+#     img = similar(label, eltype(colors))
+#     for idx in eachindex(label)
+#         img[idx] = colors[coloridx[label[idx]]]
+#     end
+#     return img
+# end

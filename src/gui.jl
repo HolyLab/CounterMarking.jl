@@ -1,5 +1,10 @@
 
-function gui(outbase, files; colors=distinguishable_colors(15, [RGB(1, 1, 1)]; dropseed=true))
+function gui(
+        outbase, files;
+        colors=distinguishable_colors(15, [RGB(1, 1, 1)]; dropseed=true),
+        btnclick = Condition(),         # used for testing
+        whichbutton = Ref{Symbol}(),    # used for testing
+    )
     channelpct(x) = string(round(Int, x * 100)) * '%'
 
     outbase, _ = splitext(outbase)
@@ -60,8 +65,6 @@ function gui(outbase, files; colors=distinguishable_colors(15, [RGB(1, 1, 1)]; d
         push!(cbs, cb)
     end
     # Add "Done & Next" and "Skip" buttons
-    btnclick = Condition()
-    whichbutton = Ref{Symbol}()
     donebtn = button("Done & Next")
     skipbtn = button("Skip")
     push!(guibx, donebtn)
@@ -129,6 +132,8 @@ function gui(outbase, files; colors=distinguishable_colors(15, [RGB(1, 1, 1)]; d
         end
     end
     destroy(win)
+    notify(btnclick)   # used in testing
+    return
 end
 gui(outbase, glob::Glob.GlobMatch; kwargs...) = gui(outbase, Glob.glob(glob); kwargs...)
 

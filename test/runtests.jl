@@ -40,4 +40,16 @@ using Test
     process_images(tmpfile, glob"*.png"; dirname=testdir)
     data = XLSX.readtable(tmpfile, "Picture")
     @test isa(data, XLSX.DataTable)
+
+    # Test the gui
+    rm(tmpfile, force=true)
+    btnclick = Condition()
+    whichbutton = Ref{Symbol}()
+    @async gui(tmpfile, [joinpath(testdir, "Picture.png")]; btnclick, whichbutton)
+    sleep(5)
+    whichbutton[] = :done
+    notify(btnclick)
+    wait(btnclick)
+    @test isfile(tmpfile)
+    @test isfile(splitext(tmpfile)[1] * ".jld2")
 end
