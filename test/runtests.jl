@@ -1,17 +1,14 @@
 using CounterMarking
 using FileIO
+using XLSX
+using ImageView
+using Glob
 using Test
 
 @testset "CounterMarking.jl" begin
-    testdir = "testimages"
+    testdir = joinpath(pkgdir(CounterMarking), "docs", "src", "assets")
     img = load(joinpath(testdir, "Picture.png"))
     seg = segment_image(img)
-    # Without ImageView loaded, we can't visualize it, but we get a helpful error
-    if !isdefined(@__MODULE__, :ImageView)
-        @test_throws "using ImageView" randshow(seg)
-        @test_throws "using ImageView" meanshow(seg)
-    end
-    @eval using ImageView
     dct = meanshow(seg)
     @test haskey(dct, "gui")
     dct = randshow(seg)
@@ -33,4 +30,26 @@ using Test
     @test stimspot.npixels > 1000
     @test stimspot.centroid[1] < size(img, 1) ÷ 2
     @test stimspot.centroid[2] < size(img, 2) ÷ 2
+
+    # Test the xlsx writing
+    tmpfile = tempname() * ".xlsx"
+    writexlsx(tmpfile, seg)
+    @test isfile(tmpfile)
+
+    # Test multi-file writing
+    process_images(tmpfile, glob"*.png"; dirname=testdir)
+    data = XLSX.readtable(tmpfile, "Picture")
+    @test isa(data, XLSX.DataTable)
+
+    # Test the gui
+    rm(tmpfile, force=true)
+    btnclick = Condition()
+    whichbutton = Ref{Symbol}()
+    @async gui(tmpfile, [joinpath(testdir, "Picture.png")]; btnclick, whichbutton)
+    sleep(5)
+    whichbutton[] = :done
+    notify(btnclick)
+    wait(btnclick)
+    @test isfile(tmpfile)
+    @test isfile(splitext(tmpfile)[1] * ".jld2")
 end
