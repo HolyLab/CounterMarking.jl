@@ -29,6 +29,11 @@ function gui(
 
     outbase, _ = splitext(outbase)
 
+    # Initialize segmented image and color similarity threshold
+    img = nothing
+    seg = nothing
+    threshold = 0.2
+
     # Set up basic properties of the window
     winsize = round.(Int, 0.8 .* screen_size())
     win = GtkWindow("CounterMarking", winsize...)
@@ -86,6 +91,55 @@ function gui(
         seggrid[col, row] = cb.widget
         push!(cbs, cb)
     end
+
+    thrshbx = GtkBox(:h)
+    thrshlbl = GtkLabel("Color Similarity Threshold: $(threshold)")
+    push!(thrshbx, thrshlbl)
+    thrshbtnbx = GtkBox(:v)
+    push!(thrshbx, thrshbtnbx)
+    lgincbtn = GtkButton("+0.05")
+    smincbtn = GtkButton("+0.01")
+    smdecbtn = GtkButton("-0.01")
+    lgdecbtn = GtkButton("-0.05")
+    push!(thrshbtnbx, lgincbtn)
+    push!(thrshbtnbx, smincbtn)
+    push!(thrshbtnbx, smdecbtn)
+    push!(thrshbtnbx, lgdecbtn)
+    push!(guibx, thrshbx)
+
+    update_threshold = change -> begin
+        newvalue = round(threshold + change; digits=2)
+        try
+            seg = segment_image(img; threshold = newvalue)
+            nsegs = length(segment_labels(seg))
+            @assert nsegs < length(colors) "Too many segments for colors"
+            istim = stimulus_index(seg)
+            for (j, cb) in enumerate(cbs)
+                # set_gtk_property!(cb, "active", j <= nsegs)
+                cb[] = (j == istim || j == preclick)
+            end
+            imshow(canvases[1, 1], img)
+            imshow(canvases[2, 1], map(i->colors[i], labels_map(seg)))
+            threshold = newvalue
+            thrshlbl.label = "Color Similarity Threshold: $threshold"
+        catch e
+            @show e
+            # display?
+        end
+    end
+    signal_connect(lgincbtn, "clicked") do w, others...
+        update_threshold(0.05)
+    end
+    signal_connect(smincbtn, "clicked") do w, others...
+        update_threshold(0.01)
+    end
+    signal_connect(smdecbtn, "clicked") do w, others...
+        update_threshold(-0.01)
+    end
+    signal_connect(lgdecbtn, "clicked") do w, others...
+        update_threshold(-0.05)
+    end
+
     # Add "Done & Next" and "Skip" buttons
     donebtn = button("Done & Next")
     skipbtn = button("Skip")
@@ -102,8 +156,10 @@ function gui(
 
     results = []
     for (i, file) in enumerate(files)
+        threshold = 0.2
+        thrshlbl.label = "Color Similarity Threshold: $threshold"
         img = color.(load(file))
-        seg = segment_image(img)
+        seg = segment_image(img; threshold = threshold)
         nsegs = length(segment_labels(seg))
         @assert nsegs < length(colors) "Too many segments for colors"
         istim = stimulus_index(seg)
