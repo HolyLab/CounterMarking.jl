@@ -8,9 +8,9 @@ Larger `threshold` values will result in fewer segments.
 """
 function segment_image(
         img::AbstractMatrix{<:Color};
-        threshold::Real = 0.2,      # threshold for color similarity in region growing
+        threshold::Real = 0.18,     # threshold for color similarity in region growing
         prune::Bool = true,         # prune small segments
-        min_size::Int = 50,         # minimum size of segments to keep
+        min_size::Int = 500,        # minimum size of segments to keep
     )
     seg = unseeded_region_growing(img, threshold)
     if prune
