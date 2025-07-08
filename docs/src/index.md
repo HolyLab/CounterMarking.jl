@@ -7,13 +7,13 @@ CurrentModule = CounterMarking
 [CounterMarking](https://github.com/HolyLab/CounterMarking.jl) analyzes experiments on [scent-marking in mice](https://www.sciencedirect.com/science/article/pii/S0003347287800167),
 specifically images of urine countermarking visualized by the [ninhydrin reaction](https://pubs.acs.org/doi/full/10.1021/jf030490p):
 
-![A ninhydrin-stained image](assets/Picture.png)
+![A ninhydrin-stained image](assets/picture_2.png)
 
 The yellow spot corresponds to a stimulus provided by the experimenter, and the small light-blue spots are deposited marks.
 
 Tips on image quality:
 
-- Put the stimulus near one of the four corners
+- Put the stimulus near one of the four corners, keeping its location as consistent as possible between images
 - Ensure lighting is fairly uniform
 - Make sure that any extraneous marks (e.g., the black writing in the image above) are of a very different color from scent marks.
 - Ensure that all your images are of the same size (i.e., same number of pixels horizontally and vertically), even if there are some extra pixels on the edges of the image
@@ -99,12 +99,22 @@ Alternatively, you can supply a list of files:
 julia> gui("results_file_name", ["PictureA.png", "mouse7.png"])
 ```
 
+Additionally, you can supply a calibration image to improve segmentation by correcting for uneven illumination.
+
+![An image to be used for calibration](assets/blurred_calibration.png)
+
+```
+julia> gui("results_file_name", ["PictureA.png", "mouse7.png"]; background_path="calibration_image.png")
+```
+
 However you launch it, you should see something like this:
 
 ![GUI](assets/gui.png)
 
 On the top is the raw image. On the bottom is the segmented image; you should visually compare the two to check whether you're pleased with the quality of the segmentation.
-(If not, click "Skip" to omit that file from analysis.)
+
+If the default segmentation doesn't look quite right, try adjusting the Color Similarity Threshold value using the buttons at the bottom of the GUI.
+(If you can't obtain a segmentation that you're happy with, click "Skip" to omit that file from analysis.)
 
 If you like the segmentation, your tasks are:
 - click on all the checkboxes with colors that correspond to urine spots. You'll notice that the stimulus spot is pre-clicked (you can correct its choice if it didn't pick correctly). Most of the time there will be only one you need to check, but you can click more than one.
