@@ -20,7 +20,7 @@ The JLD2 file can be used by [`density_map`](@ref).
 """
 function gui(
         outbase::AbstractString, files;
-        colors=distinguishable_colors(15, [RGB(1, 1, 1)]; dropseed=true),
+        colors=distinguishable_colors(15, [RGB(1, 1, 1)]; dropseed=false),
         btnclick = Condition(),         # used for testing
         whichbutton = Ref{Symbol}(),    # used for testing
         preclick::Union{Int,Nothing} = nothing,  # used for testing
@@ -105,14 +105,19 @@ function gui(
         img = color.(load(file))
         seg = segment_image(img)
         nsegs = length(segment_labels(seg))
-        @assert nsegs < length(colors) "Too many segments for colors"
-        istim = stimulus_index(seg)
+        # @assert nsegs < length(colors) "Too many segments for colors"
+        labels2idx = Dict{Int,Int}()
+        for (i,l) in enumerate(sort(seg.segment_labels))
+            idx = i > 15 ? 2 : i
+            push!(labels2idx, l=>idx)
+        end
+        istim = labels2idx[stimulus_index(seg)]
         for (j, cb) in enumerate(cbs)
             # set_gtk_property!(cb, "active", j <= nsegs)
             cb[] = (j == istim || j == preclick)
-        end
+        end    
         imshow(canvases[1, 1], img)
-        imshow(canvases[2, 1], map(i->colors[i], labels_map(seg)))
+        imshow(canvases[2, 1], map(i->colors[labels2idx[i]], labels_map(seg)))
 
         wait(btnclick)
         whichbutton[] == :skip && continue
