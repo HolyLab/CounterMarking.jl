@@ -11,6 +11,8 @@ using Gtk4
 using GtkObservables
 using ImageView
 using Random
+using LinearAlgebra
+using Statistics
 
 export segment_image, stimulus_index, spots, Spot, upperleft
 export writexlsx, process_images, density_map
