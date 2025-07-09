@@ -41,7 +41,8 @@ function gui(
     bkgmean = Float32(mean(bkgimg))
     seg = nothing
     threshold = 0.15
-
+    labels2idx = Dict{Int,Int}()
+    idx2labels = Dict{Int,Int}()
     # Set up basic properties of the window
     winsize = round.(Int, 0.8 .* screen_size())
     win = GtkWindow("CounterMarking", winsize...)
@@ -121,10 +122,13 @@ function gui(
             seg = segment_image(rescaledimg; threshold = newvalue)
             nsegs = length(segment_labels(seg))
             nsegs > length(colors) && @warn "More than $(length(colors)) segments ($(nsegs)). Excluded ones will be displayed in white and will not be selectable"
-            labels2idx = Dict{Int,Int}()
+            empty!(labels2idx)
+            empty!(idx2labels)
             for (i,l) in enumerate(sort(seg.segment_labels; rev=true, by=(l -> segment_pixel_count(seg,l))))
-                idx = i > 15 ? 2 : i
+                idx = i == 1 ? 2 : i == 2 ? 1 : i
+                idx = i > 15 ? 1 : idx  # show remaining segments in white
                 push!(labels2idx, l=>idx)
+                push!(idx2labels, idx=>l)
             end
             istim = labels2idx[stimulus_index(seg)]            
             for (j, cb) in enumerate(cbs)
@@ -177,11 +181,13 @@ function gui(
         seg = segment_image(rescaledimg; threshold = threshold)
         nsegs = length(segment_labels(seg))
         nsegs > length(colors) && @warn "More than $(length(colors)) segments ($(nsegs)). Excluded ones will be displayed in white and will not be selectable"
-        labels2idx = Dict{Int,Int}()
+        empty!(labels2idx)
+        empty!(idx2labels)
         for (i,l) in enumerate(sort(seg.segment_labels; rev=true, by=(l -> segment_pixel_count(seg,l))))
             idx = i == 1 ? 2 : i == 2 ? 1 : i
-            idx = i > 15 ? 1 : idx
+            idx = i > 15 ? 1 : idx  # show remaining segments in white
             push!(labels2idx, l=>idx)
+            push!(idx2labels, idx=>l)
         end
         istim = labels2idx[stimulus_index(seg)]
         for (j, cb) in enumerate(cbs)
@@ -189,7 +195,7 @@ function gui(
             cb[] = (j == istim || j == preclick)
         end    
         imshow(canvases[1, 1], img)
-        imshow(canvases[2, 1], map(i->colors[labels2idx[i]], labels_map(seg)))
+        imshow(canvases[2, 1], map(l->colors[labels2idx[l]], labels_map(seg)))
 
         wait(btnclick)
         whichbutton[] == :skip && continue
@@ -197,7 +203,7 @@ function gui(
         keep = Int[]
         for (j, cb) in enumerate(cbs)
             if cb[]
-                push!(keep, j)
+                push!(keep, idx2labels[j])
             end
         end
         pixelskeep = map(i -> i ∈ keep, labels_map(seg))
