@@ -24,11 +24,13 @@ function gui(
         btnclick = Condition(),         # used for testing
         whichbutton = Ref{Symbol}(),    # used for testing
         preclick::Union{Int,Nothing} = nothing,  # used for testing
-        background_path = joinpath(pkgdir(@__MODULE__),"docs","src","assets","blurred_calibration.bmp"), # used to correct for non-uniform illumination
-        crop_top::Int = 93,         # crop this many pixels off of each side
-        crop_bottom::Int = 107,
-        crop_left::Int = 55,
-        crop_right::Int = 45,
+        background_path = nothing,  # used to correct for non-uniform illumination (see joinpath(pkgdir(@__MODULE__),"docs","src","assets","blurred_calibration.bmp"))
+        crop_top::Int = 0,          # crop this many pixels off of each side
+        crop_bottom::Int = 0,
+        crop_left::Int = 0,
+        crop_right::Int = 0,
+        colorproj = RGB{Float32}(1, 1, -2), # used for identifying the stimulus
+        expectedloc = nothing,              # ""
     )
     channelpct(x) = string(round(Int, x * 100)) * '%'
 
@@ -37,8 +39,8 @@ function gui(
     # Initialize segmented image and color similarity threshold
     img = nothing
     rescaledimg = nothing
-    bkgimg = Float32.(Gray.(load(background_path)[crop_top+1:end-crop_bottom, crop_left+1:end-crop_right]))
-    bkgmean = Float32(mean(bkgimg))
+    bkgimg = isnothing(background_path) ? nothing : Float32.(Gray.(load(background_path)[crop_top+1:end-crop_bottom, crop_left+1:end-crop_right]))
+    bkgmean = isnothing(bkgimg) ? nothing : Float32(mean(bkgimg))
     seg = nothing
     threshold = 0.15
     labels2idx = Dict{Int,Int}()
@@ -130,7 +132,8 @@ function gui(
                 push!(labels2idx, l=>idx)
                 push!(idx2labels, idx=>l)
             end
-            istim = labels2idx[stimulus_index(seg)]            
+            centroidsacc, _ = get_centroidsacc(seg.image_indexmap)
+            istim = labels2idx[stimulus_index(seg, centroidsacc; colorproj = colorproj, expectedloc = expectedloc)]            
             for (j, cb) in enumerate(cbs)
                 # set_gtk_property!(cb, "active", j <= nsegs)
                 cb[] = (j == istim || j == preclick)
@@ -176,7 +179,7 @@ function gui(
         threshold = 0.15
         thrshlbl.label = "Color Similarity Threshold: $threshold"
         img = color.(load(file))[crop_top+1:end-crop_bottom, crop_left+1:end-crop_right]
-        rescaledimg = img ./ bkgimg .* bkgmean
+        rescaledimg = isnothing(bkgimg) ? img : (img ./ bkgimg .* bkgmean)
 
         seg = segment_image(rescaledimg; threshold = threshold)
         nsegs = length(segment_labels(seg))
@@ -189,7 +192,8 @@ function gui(
             push!(labels2idx, l=>idx)
             push!(idx2labels, idx=>l)
         end
-        istim = labels2idx[stimulus_index(seg)]
+        centroidsacc, _ = get_centroidsacc(seg.image_indexmap)
+        istim = labels2idx[stimulus_index(seg, centroidsacc; colorproj = colorproj, expectedloc = expectedloc)]            
         for (j, cb) in enumerate(cbs)
             # set_gtk_property!(cb, "active", j <= nsegs)
             cb[] = (j == istim || j == preclick)
@@ -209,7 +213,7 @@ function gui(
         pixelskeep = map(i -> i ∈ keep, labels_map(seg))
         L = label_components(pixelskeep)
         newseg = SegmentedImage(img, L)
-        spotdict, stimulus = spots(newseg)
+        spotdict, stimulus = spots(newseg; colorproj = colorproj, expectedloc = expectedloc)
         push!(results, (file, spotdict, stimulus, newseg))
     end
 
