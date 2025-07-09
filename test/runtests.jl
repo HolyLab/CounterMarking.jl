@@ -1,13 +1,22 @@
 using CounterMarking
 using FileIO
 using XLSX
+using ImageCore
 using ImageView
 using Glob
 using Test
+using Statistics
 
 @testset "CounterMarking.jl" begin
     testdir = joinpath(pkgdir(CounterMarking), "docs", "src", "assets")
-    img = load(joinpath(testdir, "Picture.png"))
+    oimg = load(joinpath(testdir, "Picture.png"))
+
+    # settings particular to the test image:
+    crop_top, crop_bottom, crop_left, crop_right = 93, 107, 55, 45
+    bkgimg = Float32.(Gray.(load(joinpath(testdir,"blurred_calibration.png"))[crop_top+1:end-crop_bottom, crop_left+1:end-crop_right]))
+    expectedloc = [1600,3333]
+
+    img = (oimg[crop_top+1:end-crop_bottom, crop_left+1:end-crop_right] ./ bkgimg .* Float32(mean(bkgimg)))
     seg = segment_image(img)
     dct = meanshow(seg)
     @test haskey(dct, "gui")
@@ -19,11 +28,11 @@ using Test
     @test haskey(dct, "window")
     ImageView.closeall()
 
-    spotdict, stimulus = spots(seg)
+    spotdict, stimulus = spots(seg; expectedloc=expectedloc)
     _, stimspot = stimulus
     @test stimspot.npixels > 1000
-    @test stimspot.centroid[1] < size(img, 1) ÷ 2
-    @test stimspot.centroid[2] > size(img, 2) ÷ 2
+    @test stimspot.centroid[1] - expectedloc[1] < 50
+    @test stimspot.centroid[2] - expectedloc[2] < 50
 
     stdspotdict, stdstimulus = upperleft(spotdict, stimulus, size(img))
     _, stimspot = stdstimulus
