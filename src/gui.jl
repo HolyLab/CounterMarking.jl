@@ -24,7 +24,7 @@ function gui(
         btnclick = Condition(),         # used for testing
         whichbutton = Ref{Symbol}(),    # used for testing
         preclick::Union{Int,Nothing} = nothing,  # used for testing
-        background_path = nothing,  # used to correct for non-uniform illumination (see joinpath(pkgdir(@__MODULE__),"docs","src","assets","blurred_calibration.bmp"))
+        background_path = nothing,  # used to correct for non-uniform illumination (see joinpath(pkgdir(@__MODULE__),"docs","src","assets","blurred_calibration.png"))
         crop_top::Int = 0,          # crop this many pixels off of each side
         crop_bottom::Int = 0,
         crop_left::Int = 0,

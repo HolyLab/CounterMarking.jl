@@ -7,7 +7,7 @@ CurrentModule = CounterMarking
 [CounterMarking](https://github.com/HolyLab/CounterMarking.jl) analyzes experiments on [scent-marking in mice](https://www.sciencedirect.com/science/article/pii/S0003347287800167),
 specifically images of urine countermarking visualized by the [ninhydrin reaction](https://pubs.acs.org/doi/full/10.1021/jf030490p):
 
-![A ninhydrin-stained image](assets/picture_2.png)
+![A ninhydrin-stained image](assets/Picture.png)
 
 The yellow spot corresponds to a stimulus provided by the experimenter, and the small light-blue spots are deposited marks.
 
