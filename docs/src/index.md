@@ -107,6 +107,21 @@ Additionally, you can supply a calibration image to improve segmentation by corr
 julia> gui("results_file_name", ["PictureA.png", "mouse7.png"]; background_path="calibration_image.png")
 ```
 
+There are a few more keyword arguments that might be useful:
+  - `crop_top`, `crop_bottom`, `crop_left`, and `crop_right` specify a number of pixels to be cropped from images along each side
+  - `expectedloc` specifies the expected location of the stimulus spot in pixels (after cropping)
+
+```
+julia> gui("results_file_name", glob"Picture*.png"; 
+            background_path="calibration_image.png,
+            crop_top=93,
+            crop_bottom=107,
+            crop_left=55,
+            crop_right=45,    
+            expectedloc=[1600,3333]
+        )
+```
+
 However you launch it, you should see something like this:
 
 ![GUI](assets/gui.png)
