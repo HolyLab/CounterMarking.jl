@@ -149,6 +149,8 @@ julia> using CounterMarking, ImageView   # load packages (if this is a fresh ses
 
 julia> count = density_map("results_file_name.jld2");
 
+julia> dmap = count ./ maximum(count);
+
 julia> dct = imshow(dmap);
 ```
 
