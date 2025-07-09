@@ -8,9 +8,9 @@ Larger `threshold` values will result in fewer segments.
 """
 function segment_image(
         img::AbstractMatrix{<:Color};
-        threshold::Real = 0.2,      # threshold for color similarity in region growing
+        threshold::Real = 0.15,     # threshold for color similarity in region growing
         prune::Bool = true,         # prune small segments
-        min_size::Int = 50,         # minimum size of segments to keep
+        min_size::Int = 500,        # minimum size of segments to keep
     )
     seg = unseeded_region_growing(img, threshold)
     if prune
@@ -22,16 +22,30 @@ end
 segment_image(img::AbstractMatrix{<:Colorant}; kwargs...) = segment_image(color.(img); kwargs...)
 
 """
-    idx = stimulus_index(seg::SegmentedImage, colorproj = RGB(1, 1, -2))
+    idx = stimulus_index(seg::SegmentedImage, centroidsacc; colorproj = RGB(1, 1, -2), expectedloc = nothing)
 
 Given a segmented image `seg`, return the index of the segment that scores
 highest on the product of (1) projection (dot product) with `colorproj` and (2)
 number of pixels.
+
+Optionally, if images were taken with a fixed location for the stimulus, a segment's score
+is divided by the squared distance of its centroid (via `centroidsacc`) from the position given by `expectedloc`.
 """
-function stimulus_index(seg::SegmentedImage, colorproj = RGB{Float32}(1, 1, -2))
-    proj = [l => (colorproj ⋅ segment_mean(seg, l)) * segment_pixel_count(seg, l) for l in segment_labels(seg)]
-    (i, _) = argmax(last, proj)
-    return i
+function stimulus_index(seg::SegmentedImage, centroidsacc; colorproj = RGB{Float32}(1, 1, -2), expectedloc = nothing)
+    if !isnothing(expectedloc)
+        proj = map(segment_labels(seg)) do l
+            l == 0 && return 0
+            val = centroidsacc[l]
+            centroid = [round(Int, val[1] / val[3]), round(Int, val[2] / val[3])]
+            return l => (colorproj ⋅ segment_mean(seg, l) * segment_pixel_count(seg, l) / max(1, sum(abs2, centroid .- expectedloc)))
+        end
+        (i, _) = argmax(last, proj)
+        return i
+    else 
+        proj = [l => (colorproj ⋅ segment_mean(seg, l)) * segment_pixel_count(seg, l) for l in segment_labels(seg)]
+        (i, _) = argmax(last, proj)
+        return i
+    end
 end
 
 # function contiguous(seg::SegmentedImage, img::AbstractMatrix{<:Color}; min_size::Int = 50)
@@ -46,6 +60,35 @@ end
 # end
 # contiguous(seg::SegmentedImage, img::AbstractMatrix{<:Colorant}; kwargs...) =
 #     contiguous(seg, color.(img); kwargs...)
+
+"""
+    centroidsacc, nadj = get_centroidsacc(seg::SegmentedImage)
+
+Given a the index map `indexmap` of a segmented image, return an accumulator for each segment's centroid
+as well as the number of times two segments are adjacent.
+"""
+function get_centroidsacc(indexmap::Matrix{Int64})
+    keypair(i, j) = i < j ? (i, j) : (j, i)
+    R = CartesianIndices(indexmap)
+    Ibegin, Iend = extrema(R)
+    I1 = oneunit(Ibegin)
+    centroidsacc = Dict{Int, Tuple{Int, Int, Int}}()   # accumulator for centroids
+    nadj = Dict{Tuple{Int, Int}, Int}()             # number of times two segments are adjacent
+    for idx in R
+        l = indexmap[idx]
+        l == 0 && continue
+        acc = get(centroidsacc, l, (0, 0, 0))
+        centroidsacc[l] = (acc[1] + idx[1], acc[2] + idx[2], acc[3] + 1)
+        for j in max(Ibegin, idx - I1):min(Iend, idx + I1)
+            lj = indexmap[j]
+            if lj != l && lj != 0
+                k = keypair(l, lj)
+                nadj[k] = get(nadj, k, 0) + 1
+            end
+        end
+    end
+    return centroidsacc, nadj
+end
 
 struct Spot
     npixels::Int
@@ -67,40 +110,21 @@ Spots larger than `max_size_frac * npixels` (default: 10% of the image) are igno
 function spots(
         seg::SegmentedImage;
         max_size_frac=0.1,            # no spot is bigger than max_size_frac * npixels
+        kwargs...
     )
-    keypair(i, j) = i < j ? (i, j) : (j, i)
+    centroidsacc, nadj = get_centroidsacc(seg.image_indexmap)
+    istim = stimulus_index(seg, centroidsacc; kwargs...)
 
-    istim = stimulus_index(seg)
-
-    label = seg.image_indexmap
-    R = CartesianIndices(label)
-    Ibegin, Iend = extrema(R)
-    I1 = oneunit(Ibegin)
-    centroidsacc = Dict{Int, Tuple{Int, Int, Int}}()   # accumulator for centroids
-    nadj = Dict{Tuple{Int, Int}, Int}()             # number of times two segments are adjacent
-    for idx in R
-        l = label[idx]
-        l == 0 && continue
-        acc = get(centroidsacc, l, (0, 0, 0))
-        centroidsacc[l] = (acc[1] + idx[1], acc[2] + idx[2], acc[3] + 1)
-        for j in max(Ibegin, idx - I1):min(Iend, idx + I1)
-            lj = label[j]
-            if lj != l && lj != 0
-                k = keypair(l, lj)
-                nadj[k] = get(nadj, k, 0) + 1
-            end
-        end
-    end
     stimulus = Ref{Pair{Int,Spot}}()
     filter!(centroidsacc) do (key, val)
         if key == istim
             stimulus[] = key => Spot(val[3], (round(Int, val[1] / val[3]), round(Int, val[2] / val[3])))
             return false
         end
-        val[3] <= max_size_frac * length(label) || return false
+        val[3] <= max_size_frac * length(seg.image_indexmap) || return false
         # # is the centroid within the segment?
         # x, y = round(Int, val[1] / val[3]), round(Int, val[2] / val[3])
-        # l = label[x, y]
+        # l = seg.image_indexmap[x, y]
         # @show l
         # l == key || return false
         # is the segment lighter than most of its neighbors?

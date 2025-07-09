@@ -20,15 +20,31 @@ The JLD2 file can be used by [`density_map`](@ref).
 """
 function gui(
         outbase::AbstractString, files;
-        colors=distinguishable_colors(15, [RGB(1, 1, 1)]; dropseed=true),
+        colors=distinguishable_colors(15, [RGB(1, 1, 1)]; dropseed=false),
         btnclick = Condition(),         # used for testing
         whichbutton = Ref{Symbol}(),    # used for testing
         preclick::Union{Int,Nothing} = nothing,  # used for testing
+        background_path = nothing,  # used to correct for non-uniform illumination (see joinpath(pkgdir(@__MODULE__),"docs","src","assets","blurred_calibration.png"))
+        crop_top::Int = 0,          # crop this many pixels off of each side
+        crop_bottom::Int = 0,
+        crop_left::Int = 0,
+        crop_right::Int = 0,
+        colorproj = RGB{Float32}(1, 1, -2), # used for identifying the stimulus
+        expectedloc = nothing,              # ""
     )
     channelpct(x) = string(round(Int, x * 100)) * '%'
 
     outbase, _ = splitext(outbase)
 
+    # Initialize segmented image and color similarity threshold
+    img = nothing
+    rescaledimg = nothing
+    bkgimg = isnothing(background_path) ? nothing : Float32.(Gray.(load(background_path)[crop_top+1:end-crop_bottom, crop_left+1:end-crop_right]))
+    bkgmean = isnothing(bkgimg) ? nothing : Float32(mean(bkgimg))
+    seg = nothing
+    threshold = 0.15
+    labels2idx = Dict{Int,Int}()
+    idx2labels = Dict{Int,Int}()
     # Set up basic properties of the window
     winsize = round.(Int, 0.8 .* screen_size())
     win = GtkWindow("CounterMarking", winsize...)
@@ -86,6 +102,64 @@ function gui(
         seggrid[col, row] = cb.widget
         push!(cbs, cb)
     end
+
+    thrshbx = GtkBox(:h)
+    thrshlbl = GtkLabel("Color Similarity Threshold: $(threshold)")
+    push!(thrshbx, thrshlbl)
+    thrshbtnbx = GtkBox(:v)
+    push!(thrshbx, thrshbtnbx)
+    lgincbtn = GtkButton("+0.05")
+    smincbtn = GtkButton("+0.01")
+    smdecbtn = GtkButton("-0.01")
+    lgdecbtn = GtkButton("-0.05")
+    push!(thrshbtnbx, lgincbtn)
+    push!(thrshbtnbx, smincbtn)
+    push!(thrshbtnbx, smdecbtn)
+    push!(thrshbtnbx, lgdecbtn)
+    push!(guibx, thrshbx)
+
+    update_threshold = change -> begin
+        newvalue = round(threshold + change; digits=2)
+        try
+            seg = segment_image(rescaledimg; threshold = newvalue)
+            nsegs = length(segment_labels(seg))
+            nsegs > length(colors) && @warn "More than $(length(colors)) segments ($(nsegs)). Excluded ones will be displayed in white and will not be selectable"
+            empty!(labels2idx)
+            empty!(idx2labels)
+            for (i,l) in enumerate(sort(seg.segment_labels; rev=true, by=(l -> segment_pixel_count(seg,l))))
+                idx = i == 1 ? 2 : i == 2 ? 1 : i
+                idx = i > 15 ? 1 : idx  # show remaining segments in white
+                push!(labels2idx, l=>idx)
+                push!(idx2labels, idx=>l)
+            end
+            centroidsacc, _ = get_centroidsacc(seg.image_indexmap)
+            istim = labels2idx[stimulus_index(seg, centroidsacc; colorproj = colorproj, expectedloc = expectedloc)]            
+            for (j, cb) in enumerate(cbs)
+                # set_gtk_property!(cb, "active", j <= nsegs)
+                cb[] = (j == istim || j == preclick)
+            end
+            imshow(canvases[1, 1], img)
+            imshow(canvases[2, 1], map(i->colors[labels2idx[i]], labels_map(seg)))
+            threshold = newvalue
+            thrshlbl.label = "Color Similarity Threshold: $threshold"
+        catch e
+            @show e
+            # display?
+        end
+    end
+    signal_connect(lgincbtn, "clicked") do w, others...
+        update_threshold(0.05)
+    end
+    signal_connect(smincbtn, "clicked") do w, others...
+        update_threshold(0.01)
+    end
+    signal_connect(smdecbtn, "clicked") do w, others...
+        update_threshold(-0.01)
+    end
+    signal_connect(lgdecbtn, "clicked") do w, others...
+        update_threshold(-0.05)
+    end
+
     # Add "Done & Next" and "Skip" buttons
     donebtn = button("Done & Next")
     skipbtn = button("Skip")
@@ -102,17 +176,30 @@ function gui(
 
     results = []
     for (i, file) in enumerate(files)
-        img = color.(load(file))
-        seg = segment_image(img)
+        threshold = 0.15
+        thrshlbl.label = "Color Similarity Threshold: $threshold"
+        img = color.(load(file))[crop_top+1:end-crop_bottom, crop_left+1:end-crop_right]
+        rescaledimg = isnothing(bkgimg) ? img : (img ./ bkgimg .* bkgmean)
+
+        seg = segment_image(rescaledimg; threshold = threshold)
         nsegs = length(segment_labels(seg))
-        @assert nsegs < length(colors) "Too many segments for colors"
-        istim = stimulus_index(seg)
+        nsegs > length(colors) && @warn "More than $(length(colors)) segments ($(nsegs)). Excluded ones will be displayed in white and will not be selectable"
+        empty!(labels2idx)
+        empty!(idx2labels)
+        for (i,l) in enumerate(sort(seg.segment_labels; rev=true, by=(l -> segment_pixel_count(seg,l))))
+            idx = i == 1 ? 2 : i == 2 ? 1 : i
+            idx = i > 15 ? 1 : idx  # show remaining segments in white
+            push!(labels2idx, l=>idx)
+            push!(idx2labels, idx=>l)
+        end
+        centroidsacc, _ = get_centroidsacc(seg.image_indexmap)
+        istim = labels2idx[stimulus_index(seg, centroidsacc; colorproj = colorproj, expectedloc = expectedloc)]            
         for (j, cb) in enumerate(cbs)
             # set_gtk_property!(cb, "active", j <= nsegs)
             cb[] = (j == istim || j == preclick)
-        end
+        end    
         imshow(canvases[1, 1], img)
-        imshow(canvases[2, 1], map(i->colors[i], labels_map(seg)))
+        imshow(canvases[2, 1], map(l->colors[labels2idx[l]], labels_map(seg)))
 
         wait(btnclick)
         whichbutton[] == :skip && continue
@@ -120,13 +207,13 @@ function gui(
         keep = Int[]
         for (j, cb) in enumerate(cbs)
             if cb[]
-                push!(keep, j)
+                push!(keep, idx2labels[j])
             end
         end
         pixelskeep = map(i -> i ∈ keep, labels_map(seg))
         L = label_components(pixelskeep)
         newseg = SegmentedImage(img, L)
-        spotdict, stimulus = spots(newseg)
+        spotdict, stimulus = spots(newseg; colorproj = colorproj, expectedloc = expectedloc)
         push!(results, (file, spotdict, stimulus, newseg))
     end
 
