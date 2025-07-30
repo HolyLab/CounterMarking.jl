@@ -121,25 +121,43 @@ function spots(
             stimulus[] = key => Spot(val[3], (round(Int, val[1] / val[3]), round(Int, val[2] / val[3])))
             return false
         end
-        val[3] <= max_size_frac * length(seg.image_indexmap) || return false
+        return val[3] <= max_size_frac * length(seg.image_indexmap)
         # # is the centroid within the segment?
         # x, y = round(Int, val[1] / val[3]), round(Int, val[2] / val[3])
         # l = seg.image_indexmap[x, y]
         # @show l
         # l == key || return false
         # is the segment lighter than most of its neighbors?
-        dcol, ncol = zero(valtype(seg.segment_means)), 0
-        for (k, n) in nadj
-            if key == k[1] || key == k[2]
-                l1, l2 = k[1], k[2]
-                if l1 == key
-                    l1, l2 = l2, l1
-                end
-                dcol += n * (segment_mean(seg, l1) - segment_mean(seg, l2))
-                ncol += n
-            end
+        # dcol, ncol = zero(valtype(seg.segment_means)), 0
+        # for (k, n) in nadj
+        #     if key == k[1] || key == k[2]
+        #         l1, l2 = k[1], k[2]
+        #         if l1 == key
+        #             l1, l2 = l2, l1
+        #         end
+        #         dcol += n * (segment_mean(seg, l1) - segment_mean(seg, l2))
+        #         ncol += n
+        #     end
+        # end
+        # return reducec(+, dcol) < 0
+    end
+    return Dict(l => Spot(val[3], (round(Int, val[1] / val[3]), round(Int, val[2] / val[3]))) for (l, val) in centroidsacc), stimulus[]
+end
+
+function spots(
+        indexmap::Matrix{Int},
+        istim::Int;
+        max_size_frac=0.1, 
+        kwargs...
+    )
+    centroidsacc, nadj = get_centroidsacc(indexmap)
+    stimulus = Ref{Pair{Int,Spot}}()
+    filter!(centroidsacc) do (key, val)
+        if key == istim
+            stimulus[] = key => Spot(val[3], (round(Int, val[1] / val[3]), round(Int, val[2] / val[3])))
+            return false
         end
-        return reducec(+, dcol) < 0
+        return val[3] <= max_size_frac * length(indexmap)
     end
     return Dict(l => Spot(val[3], (round(Int, val[1] / val[3]), round(Int, val[2] / val[3]))) for (l, val) in centroidsacc), stimulus[]
 end
