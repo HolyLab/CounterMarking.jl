@@ -25,6 +25,7 @@ function gui(
         whichbutton = Ref{Symbol}(),    # used for testing
         preclick::Union{Int,Nothing} = nothing,  # used for testing
         background_path = nothing,  # used to correct for non-uniform illumination (see joinpath(pkgdir(@__MODULE__),"docs","src","assets","blurred_calibration.png"))
+        default_threshold = 0.2,    # default color similarity threshold used for segmentation
         crop_top::Int = 0,          # crop this many pixels off of each side
         crop_bottom::Int = 0,
         crop_left::Int = 0,
@@ -42,7 +43,7 @@ function gui(
     bkgimg = isnothing(background_path) ? nothing : Float32.(Gray.(load(background_path)[crop_top+1:end-crop_bottom, crop_left+1:end-crop_right]))
     bkgmean = isnothing(bkgimg) ? nothing : Float32(mean(bkgimg))
     seg = nothing
-    threshold = 0.15
+    threshold = default_threshold
     labels2idx = Dict{Int,Int}()
     idx2labels = Dict{Int,Int}()
     # Set up basic properties of the window
