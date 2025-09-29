@@ -17,9 +17,11 @@ using Statistics
 export segment_image, stimulus_index, spots, Spot, upperleft
 export writexlsx, process_images, density_map
 export randshow, meanshow, gui
+export spot_distances, pixel_distances
 
 include("segment.jl")
 include("xlxs.jl")
 include("gui.jl")
+include("distances.jl")
 
 end
