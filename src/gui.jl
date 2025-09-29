@@ -177,7 +177,7 @@ function gui(
 
     results = []
     for (i, file) in enumerate(files)
-        threshold = 0.15
+        threshold = default_threshold
         thrshlbl.label = "Color Similarity Threshold: $threshold"
         img = color.(load(file))[crop_top+1:end-crop_bottom, crop_left+1:end-crop_right]
         rescaledimg = isnothing(bkgimg) ? img : (img ./ bkgimg .* bkgmean)
