@@ -10,7 +10,7 @@ function segment_image(
         img::AbstractMatrix{<:Color};
         threshold::Real = 0.2,      # threshold for color similarity in region growing
         prune::Bool = true,         # prune small segments
-        min_size::Int = 500,        # minimum size of segments to keep
+        min_size::Int = 100,        # minimum size of segments to keep
     )
     seg = unseeded_region_growing(img, threshold)
     if prune
@@ -22,27 +22,27 @@ end
 segment_image(img::AbstractMatrix{<:Colorant}; kwargs...) = segment_image(color.(img); kwargs...)
 
 """
-    idx = stimulus_index(seg::SegmentedImage, centroidsacc; colorproj = RGB(1, 1, -2), expectedloc = nothing)
+    idx = stimulus_index(seg::SegmentedImage, centroidsacc; colorproj = RGB(1, 1, -2), expectedpixels = 50000, expectedloc = nothing)
 
 Given a segmented image `seg`, return the index of the segment that scores
-highest on the product of (1) projection (dot product) with `colorproj` and (2)
-number of pixels.
+highest on the quotient of (1) projection (dot product) with `colorproj` with (2)
+the absolute value of the difference between the number of pixels with `expectedpixels`.
 
 Optionally, if images were taken with a fixed location for the stimulus, a segment's score
 is divided by the squared distance of its centroid (via `centroidsacc`) from the position given by `expectedloc`.
 """
-function stimulus_index(seg::SegmentedImage, centroidsacc; colorproj = RGB{Float32}(1, 1, -2), expectedloc = nothing)
+function stimulus_index(seg::SegmentedImage, centroidsacc; colorproj = RGB{Float32}(1, 1, -2), expectedpixels = 40000, expectedloc = nothing)
     if !isnothing(expectedloc)
         proj = map(segment_labels(seg)) do l
             l == 0 && return 0
             val = centroidsacc[l]
             centroid = [round(Int, val[1] / val[3]), round(Int, val[2] / val[3])]
-            return l => (colorproj ⋅ segment_mean(seg, l) * segment_pixel_count(seg, l) / max(1, sum(abs2, centroid .- expectedloc)))
+            return l => (colorproj ⋅ segment_mean(seg, l) / max(1, abs(segment_pixel_count(seg, l) - expectedpixels)) / max(1, sum(abs2, centroid .- expectedloc)))
         end
         (i, _) = argmax(last, proj)
         return i
     else 
-        proj = [l => (colorproj ⋅ segment_mean(seg, l)) * segment_pixel_count(seg, l) for l in segment_labels(seg)]
+        proj = [l => (colorproj ⋅ segment_mean(seg, l)) / max(1, abs(segment_pixel_count(seg, l) - expectedpixels)) for l in segment_labels(seg)]
         (i, _) = argmax(last, proj)
         return i
     end
@@ -110,18 +110,18 @@ Spots larger than `max_size_frac * npixels` (default: 10% of the image) are igno
 function spots(
         seg::SegmentedImage;
         max_size_frac=0.1,            # no spot is bigger than max_size_frac * npixels
+        min_size_pixels=10,           # smallest allowed spot
         kwargs...
     )
     centroidsacc, nadj = get_centroidsacc(seg.image_indexmap)
     istim = stimulus_index(seg, centroidsacc; kwargs...)
-
     stimulus = Ref{Pair{Int,Spot}}()
     filter!(centroidsacc) do (key, val)
         if key == istim
             stimulus[] = key => Spot(val[3], (round(Int, val[1] / val[3]), round(Int, val[2] / val[3])))
             return false
         end
-        return val[3] <= max_size_frac * length(seg.image_indexmap)
+        return min_size_pixels <= val[3] <= max_size_frac * length(seg.image_indexmap)
         # # is the centroid within the segment?
         # x, y = round(Int, val[1] / val[3]), round(Int, val[2] / val[3])
         # l = seg.image_indexmap[x, y]
@@ -148,6 +148,7 @@ function spots(
         indexmap::Matrix{Int},
         istim::Int;
         max_size_frac=0.1, 
+        min_size_pixels=10,
         kwargs...
     )
     centroidsacc, nadj = get_centroidsacc(indexmap)
@@ -157,7 +158,7 @@ function spots(
             stimulus[] = key => Spot(val[3], (round(Int, val[1] / val[3]), round(Int, val[2] / val[3])))
             return false
         end
-        return val[3] <= max_size_frac * length(indexmap)
+        return min_size_pixels <= val[3] <= max_size_frac * length(indexmap)
     end
     return Dict(l => Spot(val[3], (round(Int, val[1] / val[3]), round(Int, val[2] / val[3]))) for (l, val) in centroidsacc), stimulus[]
 end

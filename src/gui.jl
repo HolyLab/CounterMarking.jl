@@ -30,8 +30,12 @@ function gui(
         crop_bottom::Int = 0,
         crop_left::Int = 0,
         crop_right::Int = 0,
+        min_size = 100,                     # minimum size of segments to keep
         colorproj = RGB{Float32}(1, 1, -2), # used for identifying the stimulus
+        expectedpixels = 40000,             # ""
         expectedloc = nothing,              # ""
+        max_size_frac = 0.1,                # sets largest allowed spot size
+        min_size_pixels = 10                # sets smallest allowed spot size
     )
     channelpct(x) = string(round(Int, x * 100)) * '%'
 
@@ -122,7 +126,7 @@ function gui(
     update_threshold = change -> begin
         newvalue = round(threshold + change; digits=2)
         try
-            seg = segment_image(rescaledimg; threshold = newvalue)
+            seg = segment_image(rescaledimg; threshold = newvalue, min_size = min_size)
             nsegs = length(segment_labels(seg))
             nsegs > length(colors) && @warn "More than $(length(colors)) segments ($(nsegs)). Excluded ones will be displayed in white and will not be selectable"
             empty!(labels2idx)
@@ -134,7 +138,7 @@ function gui(
                 push!(idx2labels, idx=>l)
             end
             centroidsacc, _ = get_centroidsacc(seg.image_indexmap)
-            istim = labels2idx[stimulus_index(seg, centroidsacc; colorproj = colorproj, expectedloc = expectedloc)]            
+            istim = labels2idx[stimulus_index(seg, centroidsacc; colorproj = colorproj, expectedpixels = expectedpixels, expectedloc = expectedloc)]            
             for (j, cb) in enumerate(cbs)
                 # set_gtk_property!(cb, "active", j <= nsegs)
                 cb[] = (j == istim || j == preclick)
@@ -182,7 +186,7 @@ function gui(
         img = color.(load(file))[crop_top+1:end-crop_bottom, crop_left+1:end-crop_right]
         rescaledimg = isnothing(bkgimg) ? img : (img ./ bkgimg .* bkgmean)
 
-        seg = segment_image(rescaledimg; threshold = threshold)
+        seg = segment_image(rescaledimg; threshold = threshold, min_size = min_size)
         nsegs = length(segment_labels(seg))
         nsegs > length(colors) && @warn "More than $(length(colors)) segments ($(nsegs)). Excluded ones will be displayed in white and will not be selectable"
         empty!(labels2idx)
@@ -194,7 +198,7 @@ function gui(
             push!(idx2labels, idx=>l)
         end
         centroidsacc, _ = get_centroidsacc(seg.image_indexmap)
-        istim = labels2idx[stimulus_index(seg, centroidsacc; colorproj = colorproj, expectedloc = expectedloc)]            
+        istim = labels2idx[stimulus_index(seg, centroidsacc; colorproj = colorproj, expectedpixels = expectedpixels, expectedloc = expectedloc)]            
         for (j, cb) in enumerate(cbs)
             # set_gtk_property!(cb, "active", j <= nsegs)
             cb[] = (j == istim || j == preclick)
@@ -214,7 +218,7 @@ function gui(
         pixelskeep = map(i -> i ∈ keep, labels_map(seg))
         L = label_components(pixelskeep)
         newseg = SegmentedImage(img, L)
-        spotdict, stimulus = spots(newseg; colorproj = colorproj, expectedloc = expectedloc)
+        spotdict, stimulus = spots(newseg; colorproj = colorproj, expectedpixels = expectedpixels, expectedloc = expectedloc, max_size_frac = max_size_frac, min_size_pixels = min_size_pixels)
         push!(results, (file, spotdict, stimulus, newseg))
     end
 
